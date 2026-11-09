@@ -77,6 +77,13 @@ export const GATES = [
     about: "pi-ai 世代判定与 transcript 折叠/展开（0.82 与 1.x 两代形状）"
   },
   {
+    name: "pi-ai-contract",
+    lane: "fast",
+    script: "scripts/pi-ai-contract.test.mjs",
+    timeoutMs: 30_000,
+    about: "用两代真实 estimator 复算适配输出：旧版 system 消息崩溃必须被修复覆盖"
+  },
+  {
     name: "docs",
     lane: "fast",
     script: "scripts/verify-docs.mjs",
