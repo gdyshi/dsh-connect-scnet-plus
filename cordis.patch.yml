@@ -1,0 +1,6 @@
+# Register the SCNet (超算互联网 / 计算服务) provider without changing the
+# profile's default model. Credentials are discovered read-only from the local
+# scnet-client tooling; no sign-in flow is started.
+- insert:
+    - id: dsh-connect-scnet-plus
+      name: dsh-connect-scnet-plus
