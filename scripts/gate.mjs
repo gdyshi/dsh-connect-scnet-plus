@@ -70,6 +70,13 @@ export const GATES = [
     about: "上下文溢出救援：折叠预算、收缩、去重、旁路（纯内存）"
   },
   {
+    name: "pi-ai",
+    lane: "fast",
+    script: "scripts/pi-ai-runtime.test.mjs",
+    timeoutMs: 30_000,
+    about: "pi-ai 世代判定与 transcript 折叠/展开（0.82 与 1.x 两代形状）"
+  },
+  {
     name: "docs",
     lane: "fast",
     script: "scripts/verify-docs.mjs",

@@ -28,6 +28,7 @@ npm run gate -- --bail              # 首个失败即停（CI 省时间；本地
 | unit | `scripts/selftest.mjs` | 凭据发现、模型目录与选择语义、loopback shim 的 26 项行为断言 | fast |
 | replay | `scripts/replay-semantics.test.mjs` | 跨 provider 历史重放：自身 `dsh-foreign` 身份修复、外来 thinking 丢弃、同路由保留、畸形结构加固 | fast |
 | rescue | `scripts/context-rescue.test.mjs` | 上下文溢出救援：折叠预算、尾部收缩、单 session 去重、旁路条件、错误事件原样转发 | fast |
+| pi-ai | `scripts/pi-ai-runtime.test.mjs` | pi-ai 世代判定（0.87+/1.x vs 旧版）与 transcript 折叠/展开、幂等、往返 | fast |
 | docs | `scripts/verify-docs.mjs` | Markdown 相对链接与 `#锚点`、代码围栏闭合、中英配对标题数一致、README/详情页文档预算 | fast |
 | manifest | `scripts/verify-manifest.mjs` | `package.json` / `cordis.patch.yml` / `locale/*.json` 三方一致（id、名字、meta.detail、双语键集合） | fast |
 | pack | `scripts/verify-package.mjs` | `exports`/`files` 指向真实文件、依赖精确锁定、`npm pack` 实际文件清单与版本一致 | slow |
