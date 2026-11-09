@@ -1,0 +1,83 @@
+# The single CI gate. Local developers run the same entry point
+# (`npm run gate`), so "green locally" always predicts "green here".
+#
+# Why a matrix and not one runner: the plugin's path handling and credential
+# discovery branch on platform (USERPROFILE vs HOME, path separators), so Linux
+# and Windows both have to prove it. Node 22.19 is the engines floor; 24.x is
+# the current line the host ships.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege: a gate run reads the checkout and uploads a report.
+permissions:
+  contents: read
+
+# Superseded runs are wasted runner minutes; cancel them. Release runs are the
+# only ones that must never be cancelled (see release.yml).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  NO_COLOR: "1"
+
+jobs:
+  gates:
+    name: gates (${{ matrix.os }} / node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      # One red leg must not hide the other platform's evidence.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ["22.19.0", "24.x"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      # Immutable install from the committed lockfile. Gates themselves need no
+      # dependencies, but installing proves the declared peer ranges resolve.
+      - name: Install (immutable)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run gates
+        run: npm run gate -- --report gate-report.json
+      - name: Upload gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-report-${{ matrix.os }}-node${{ matrix.node }}
+          path: gate-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  # One stable required check for branch protection. The matrix leg names above
+  # change whenever the matrix changes; this name must not.
+  all-checks-passed:
+    name: all checks passed
+    needs: [gates]
+    # `always()` so the verdict still runs when an upstream job was cancelled;
+    # a skipped required check is reported as success by GitHub.
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every matrix leg
+        if: needs.gates.result != 'success'
+        run: |
+          echo "::error::gates job result: ${{ needs.gates.result }}"
+          exit 1
+      - name: Green
+        run: echo "all matrix legs passed"

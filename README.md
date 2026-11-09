@@ -1,5 +1,7 @@
 # dsh-connect-scnet-plus
 
+[![CI](https://github.com/gdyshi/dsh-connect-scnet-plus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gdyshi/dsh-connect-scnet-plus/actions/workflows/ci.yml)
+
 把本机「超算互联网 / SCNet（计算服务）」客户端已登录的模型接入 DeepSeek Harness。
 
 **这是增强版**：在插件详情页提供「模型 / 说明」tab 卡片，可逐模型勾选启用；支持带图历史；内置诊断。
@@ -34,6 +36,18 @@ dsh plugin --profile desktop add file:/绝对路径/dsh-connect-scnet-plus-0.1.0
 - 设置 → 已安装插件 → `dsh-connect-scnet-plus` → 详情页的「模型」tab
 - 默认全部不勾选 = 不做限制（所有模型可用）；勾选部分模型后，只有勾选的出现在模型选择器里
 - 改动即时写进插件设置，宿主约 10 秒重建模型表，不用重启
+
+## 自动化与质量门禁
+
+一条命令跑完本地全部门禁，与 CI 完全同源：
+
+```sh
+npm run gate                  # 全量 8 项：syntax / unit / replay / rescue / docs / manifest / pack / automation
+npm run gate -- --lane fast   # 提交前快速档
+npm run gate -- --list        # 查看门禁注册表
+```
+
+CI 在 Node 22.19 / 24 × Ubuntu / Windows 上运行，任何矩阵腿失败都会让 `all checks passed` 变红；推 `v*` tag 会自动重跑门禁、打包 tarball 并创建 Release。设计原则、门禁明细与排障见 [docs/AUTOMATION.zh.md](docs/AUTOMATION.zh.md)。
 
 ## 凭据只读声明
 

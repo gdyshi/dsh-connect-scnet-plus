@@ -1,5 +1,7 @@
 node_modules/
 *.tgz
+gate-report.json
+dist/
 .DS_Store
 Thumbs.db
 *.log

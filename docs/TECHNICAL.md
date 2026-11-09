@@ -43,8 +43,20 @@ scnet 客户端把 OpenAI 兼容的 LLM 网关留在本机工具链里:
 
 适配层按 `dsh-connect-workbuddy` 验证过的语义处理两件事(独立实现):
 
-1. **重放准备**(lib/adapter.js 的 sanitizeOptions):先对齐自己路由名下被宿主降级成 `api:'dsh-foreign'` 的历史 assistant 消息,再对真外来的消息无条件删除其 thinking 块(redacted 除外),同路由换模型的消息不动;另做结构加固,防止宿主 dsh-llm-pi-ai 层在畸形形状上崩溃。
+1. **重放准备**(lib/replay-semantics.js 的 sanitizeOptions):先对齐自己路由名下被宿主降级成 `api:'dsh-foreign'` 的历史 assistant 消息,再对真外来的消息无条件删除其 thinking 块(redacted 除外),同路由换模型的消息不动;另做结构加固,防止宿主 dsh-llm-pi-ai 层在畸形形状上崩溃。
 2. **上下文溢出救援**(lib/context-rescue.js):上游确认溢出时,在错误事件继续传递**之前**折叠最旧的历史(tokenMeter 测量 → compaction.compactRegion,目标 60% 窗口、单块 35% 预算、最多 8 轮、tail 边最多收缩 24 次、单次折叠 180s 超时),避免宿主压缩请求自己超限的死锁。错误事件原样转发,是否重试由宿主决定。
+
+## 自动化与可测性边界
+
+本地与 CI 使用同一个门禁入口：`npm run gate` → `scripts/gate.mjs`（8 条门禁、fast/slow 车道）。设计、门禁清单与排障见 [AUTOMATION.zh.md](AUTOMATION.zh.md)。
+
+为了让「门禁」真正可执行，纯逻辑与宿主边界做了拆分：
+
+- `lib/replay-semantics.js`：跨 provider 历史重放的完整规则（身份修复、加固、外来 thinking 丢弃）。不 import 任何宿主包，`scripts/replay-semantics.test.mjs` 直接断言这份**真实实现**，而不是测试文件里的逻辑副本。
+- `lib/rescue-wrap.js`：上下文溢出救援的 stream 包装器，pi-ai 的两个原语由 `lib/adapter.js` 注入；`scripts/context-rescue.test.mjs` 用假事件流断言「救援在错误事件转发前发生、错误原样转发、缺 sessionId/window 时旁路」。运行时路径不变。
+- `scripts/check-syntax.mjs` 用 `node --check` 只解析、不执行模块：`import()` 整模块会触发顶层副作用（起 shim、读凭据），不是语法检查。
+- 测试自足：不联网、不读写 `~/.sclaw`；shim 测试只连自己起的 loopback mock，凭据/目录用临时目录与构造数据。
+- `scripts/live-check.mjs` 是手动联调脚本（需要真实凭据与网络），刻意不进 CI，也不进任何门禁。
 
 ## License
 

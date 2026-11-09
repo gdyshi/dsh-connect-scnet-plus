@@ -1,0 +1,54 @@
+# Release lane: v* tag -> gates -> tarball -> GitHub Release asset.
+#
+# Deliberately separate from CI: a release run must never be cancelled midway,
+# and it is the only workflow with a write token. The tarball is the artifact
+# users install with `dsh plugin add file:...tgz`, so the gates run again here
+# against the exact tree being tagged.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: Release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: pack and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: npm
+      - name: Install (immutable)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run gates before publishing
+        run: npm run gate -- --report gate-report.json
+      - name: Verify tag matches package version
+        run: |
+          node -e "const p = require('./package.json'); const tag = process.env.GITHUB_REF_NAME; if (tag !== 'v' + p.version) { console.error('tag ' + tag + ' does not match package version v' + p.version); process.exit(1); }"
+      - name: Pack
+        run: |
+          mkdir -p dist
+          npm pack --pack-destination dist
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-tarball
+          path: dist/*.tgz
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.tgz --generate-notes --title "$GITHUB_REF_NAME"

@@ -1,22 +1,90 @@
-﻿const OWN_ROUTE='scnet', HOST_FOREIGN_API='dsh-foreign';
-function blocksOf(m){return Array.isArray(m?.content)?m.content:[]}
-function align(msgs){let ch=false;const next=msgs.map(m=>{if(m===null||typeof m!=='object')return m;if(m.role!=='assistant')return m;if(m.provider!==OWN_ROUTE)return m;if(m.api!==HOST_FOREIGN_API)return m;ch=true;return {...m,api:'openai-completions'}});return ch?next:msgs}
-function isCross(m){if(m===null||typeof m!=='object')return false;if(m.role!=='assistant')return false;if(m.api===HOST_FOREIGN_API)return true;return typeof m.provider!=='string'||m.provider!==OWN_ROUTE}
-function dropForeign(m){const c=blocksOf(m);const f=c.filter(b=>b===null||typeof b!=='object'||b.type!=='thinking'||b.redacted===true);return f.length!==c.length?{...m,content:f}:m}
-const msgs=[
- {role:'assistant',provider:'scnet',api:'dsh-foreign',content:[{type:'thinking',thinking:'a'},{type:'text',text:'b'}]},
- {role:'assistant',provider:'workbuddy',api:'dsh-foreign',content:[{type:'thinking',thinking:'x'.repeat(100)},{type:'text',text:'y'}]},
- {role:'assistant',provider:'scnet',api:'openai-completions',content:[{type:'thinking',thinking:'sig',thinkingSignature:'s1'}]},
- {role:'assistant',provider:'scnet',api:'openai-completions',content:[{type:'thinking',thinking:'unsigned-own'}]},
- {role:'assistant',provider:'scnet',api:'dsh-foreign',content:[{type:'thinking',thinking:'redacted',redacted:true},{type:'thinking',thinking:'normal',thinkingSignature:'s2'}]}
+#!/usr/bin/env node
+/**
+ * Cross-provider replay semantics, asserted against the SHIPPED implementation
+ * (lib/replay-semantics.js). This used to re-type align/dropForeign inside the
+ * test file, which meant the test could stay green while the implementation
+ * changed — the most expensive kind of false green.
+ *
+ * Semantics under guard:
+ *   ① own turn stamped `dsh-foreign` is aligned back and keeps its thinking;
+ *   ② foreign turn loses unsigned thinking, keeps text;
+ *   ③ own signed thinking is kept;
+ *   ④ own unsigned (same-route model switch) thinking is kept;
+ *   ⑤ aligned own turn keeps redacted + signed thinking;
+ *   ⑥ deformation hardening: string content, missing assistant source, junk.
+ *
+ * Usage: node scripts/replay-semantics.test.mjs
+ */
+
+import assert from "node:assert/strict";
+
+import {
+  alignAssistantIdentities,
+  dropForeignThinkingBlocks,
+  hardenMessage,
+  isCrossProviderAssistant,
+  sanitizeOptions
+} from "../lib/replay-semantics.js";
+
+const OWN_ROUTE = "scnet";
+const HOST_FOREIGN_API = "dsh-foreign";
+
+const messages = [
+  { role: "assistant", provider: "scnet", api: "dsh-foreign", content: [{ type: "thinking", thinking: "a" }, { type: "text", text: "b" }] },
+  { role: "assistant", provider: "workbuddy", api: "dsh-foreign", content: [{ type: "thinking", thinking: "x".repeat(100) }, { type: "text", text: "y" }] },
+  { role: "assistant", provider: "scnet", api: "openai-completions", content: [{ type: "thinking", thinking: "sig", thinkingSignature: "s1" }] },
+  { role: "assistant", provider: "scnet", api: "openai-completions", content: [{ type: "thinking", thinking: "unsigned-own" }] },
+  {
+    role: "assistant",
+    provider: "scnet",
+    api: "dsh-foreign",
+    content: [{ type: "thinking", thinking: "redacted", redacted: true }, { type: "thinking", thinking: "normal", thinkingSignature: "s2" }]
+  }
 ];
-const aligned=align(msgs);
-const out=aligned.map(m=>isCross(m)?dropForeign(m):m);
-const assert=(c,msg)=>{if(!c){console.error('FAIL:',msg);process.exit(1)}console.log('PASS:',msg)};
-assert(out[0].api==='openai-completions','① own dsh-foreign api aligned');
-assert(out[0].content.length===2,'① own (aligned) thinking KEPT');
-assert(out[1].content.length===1&&out[1].content[0].type==='text','② foreign thinking DROPPED');
-assert(out[2].content.length===1&&out[2].content[0].thinkingSignature==='s1','③ own signed thinking kept');
-assert(out[3].content.length===1,'④ own unsigned (same-route switch) kept (no switch yet)');
-assert(out[4].api==='openai-completions'&&out[4].content.length===2&&out[4].content[0].type==='thinking'&&out[4].content[0].redacted===true&&out[4].content[1].thinkingSignature==='s2','⑤ aligned own: redacted + signed kept');
-console.log('ALL SEMANTICS PASS');
+
+const sanitized = sanitizeOptions({ messages }).messages;
+
+// ① own dsh-foreign api aligned; thinking kept because it is our own turn now
+assert.equal(sanitized[0].api, "openai-completions");
+assert.equal(sanitized[0].content.length, 2);
+console.log("PASS: ① own dsh-foreign api aligned, thinking kept");
+
+// ② foreign thinking dropped
+assert.deepEqual(sanitized[1].content, [{ type: "text", text: "y" }]);
+console.log("PASS: ② foreign thinking dropped");
+
+// ③ own signed thinking kept
+assert.equal(sanitized[2].content.length, 1);
+assert.equal(sanitized[2].content[0].thinkingSignature, "s1");
+console.log("PASS: ③ own signed thinking kept");
+
+// ④ own unsigned (same-route switch) thinking kept
+assert.equal(sanitized[3].content.length, 1);
+assert.equal(sanitized[3].content[0].thinking, "unsigned-own");
+console.log("PASS: ④ own unsigned (same-route switch) kept");
+
+// ⑤ aligned own turn keeps redacted + signed thinking
+assert.equal(sanitized[4].api, "openai-completions");
+assert.equal(sanitized[4].content.length, 2);
+assert.equal(sanitized[4].content[0].type, "thinking");
+assert.equal(sanitized[4].content[0].redacted, true);
+assert.equal(sanitized[4].content[1].thinkingSignature, "s2");
+console.log("PASS: ⑤ aligned own: redacted + signed kept");
+
+// ⑥ deformation hardening
+assert.equal(hardenMessage({ role: "user", content: "plain" }).content[0].text, "plain", "string content becomes a text block");
+assert.deepEqual(hardenMessage({ role: "user", content: "" }).content, [], "empty string content becomes []");
+assert.deepEqual(hardenMessage({ role: "assistant", content: [] }).source, {}, "assistant source is defaulted");
+assert.equal(hardenMessage(null), null, "null messages pass through");
+assert.equal(sanitizeOptions(undefined), undefined, "absent options pass through");
+assert.deepEqual(sanitizeOptions({ messages: [] }).messages, [], "empty message list passes through untouched");
+console.log("PASS: ⑥ deformation hardening and pass-through");
+
+// layers exposed for targeted reasoning about a regression
+assert.equal(alignAssistantIdentities([{ role: "assistant", provider: OWN_ROUTE, api: HOST_FOREIGN_API }])[0].api, "openai-completions");
+assert.equal(isCrossProviderAssistant({ role: "assistant", provider: "other", api: "openai-completions" }), true);
+assert.equal(isCrossProviderAssistant({ role: "assistant", provider: OWN_ROUTE, api: "openai-completions" }), false);
+assert.equal(dropForeignThinkingBlocks({ content: [{ type: "thinking" }, { type: "text", text: "t" }] }).content.length, 1);
+console.log("PASS: layers behave individually");
+
+console.log("\nALL REPLAY SEMANTICS PASS");

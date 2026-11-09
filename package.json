@@ -37,7 +37,14 @@
   ],
   "scripts": {
     "test": "node scripts/selftest.mjs",
-    "check": "node scripts/check-syntax.mjs && node scripts/selftest.mjs"
+    "gate": "node scripts/gate.mjs",
+    "gate:fast": "node scripts/gate.mjs --lane fast",
+    "gate:list": "node scripts/gate.mjs --list",
+    "check": "node scripts/gate.mjs",
+    "verify:docs": "node scripts/verify-docs.mjs",
+    "verify:package": "node scripts/verify-package.mjs",
+    "verify:manifest": "node scripts/verify-manifest.mjs",
+    "verify:automation": "node scripts/verify-automation.mjs"
   },
   "dsh": {
     "bundle": {
