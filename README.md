@@ -64,6 +64,35 @@ CI 在 Node 22.19 / 24 × Ubuntu / Windows 上运行，任何矩阵腿失败都�
 node lib/bin.js        # 凭据 / 目录 / 网关连通性 / 模型启用状态 / pi-ai 版本
 ```
 
+
+## pi-ai 版本：自动适配，不需要手动对齐
+
+`@earendil-works/pi-ai` 是**可选 peer**：装插件时 pnpm 可能给 profile 装一份旧版
+（例如 0.82.1），而宿主自己内置的是 1.x。两代 pi-ai 消费的 **context 形状不同**：
+
+- 0.87+ / 1.x：归一化 transcript，system prompt 与 tools 挂在首条 system 消息上
+- 0.82 / 0.85：扁平 `{systemPrompt, tools, messages}`，且没有 system 分支
+
+版本错配的典型症状是每个请求在本地 32ms 内崩掉、上游零流量：
+
+```
+PI_AI_ERROR: Cannot read properties of undefined (reading 'length')
+```
+
+**本插件会自己处理这件事**（做法与 dsh-connect-workbuddy 的 issues #24/#25/#26 一致）：
+
+- 启动时用 `import.meta.resolve` + 读 manifest 判断插件**实际解析到**哪一代
+  （不 import，避免加载期崩溃）
+- 适配器按世代自动折叠 / 展开 transcript，两代都能正常收发，**不需要你改版本**
+- 想知道当前判定结果，跑诊断：
+
+```sh
+node lib/bin.js
+```
+
+输出里 `piAi.generation` 是 `modern` 或 `legacy`，`piAi.resolvedLocally`
+说明是否解析到本地副本。
+
 ## 故障排查
 
 **`PI_AI_ERROR: Cannot read properties of undefined (reading 'length')`**：宿主内置
