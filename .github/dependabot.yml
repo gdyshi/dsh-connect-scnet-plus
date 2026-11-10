@@ -1,6 +1,16 @@
 # Keep the toolchain that guards this repository current. Action bumps and
 # dependency bumps arrive as reviewable PRs that run the same gates as any
 # other change.
+#
+# `rebase-strategy: auto` — main is protected with `strict` required checks, so
+# a PR that falls behind main can never merge until it is up to date. Without
+# this setting every dependabot PR would need a manual "Update branch" click
+# after any other merge. With it, dependabot rebases its own branch when main
+# moves, so the PR stays mergeable on its own.
+#
+# Trade-off: each rebase re-runs CI. The gates are fast (~1 min) and the
+# weekly schedule keeps the churn low; if Actions minutes ever matter, switch
+# this back to the default and update branches by hand.
 version: 2
 updates:
   - package-ecosystem: "npm"
@@ -8,6 +18,7 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    rebase-strategy: "auto"
     groups:
       dev-dependencies:
         dependency-type: "development"
@@ -16,3 +27,4 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    rebase-strategy: "auto"
