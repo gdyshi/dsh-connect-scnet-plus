@@ -30,6 +30,8 @@ npm run gate -- --bail              # 首个失败即停（CI 省时间；本地
 | rescue | `scripts/context-rescue.test.mjs` | 上下文溢出救援：折叠预算、尾部收缩、单 session 去重、旁路条件、错误事件原样转发 | fast |
 | pi-ai | `scripts/pi-ai-runtime.test.mjs` | pi-ai 世代判定（0.87+/1.x vs 旧版）与 transcript 折叠/展开、幂等、往返 | fast |
 | pi-ai-contract | `scripts/pi-ai-contract.test.mjs` | 用两代真实 estimator 复算适配输出：旧版对 system 消息的 `reading 'length'` 崩溃必须被修复覆盖（含变异验证） | fast |
+| thinking | `scripts/thinking-context.test.mjs` | 思考档位映射（thinkingMode→thinkingLevelMap）、逐模型上下文预算只缩不放、历史 thinking 两个开关与默认行为 | fast |
+| thinking-wire | `scripts/thinking-wire.test.mjs` | 真实 pi-ai 打出的请求体：所选档位→`thinking`/`reasoning_effort`，`off`→`thinking{disabled}`；无 peer 时跳过 | fast |
 | docs | `scripts/verify-docs.mjs` | Markdown 相对链接与 `#锚点`、代码围栏闭合、中英配对标题数一致、README/详情页文档预算 | fast |
 | manifest | `scripts/verify-manifest.mjs` | `package.json` / `cordis.patch.yml` / `locale/*.json` 三方一致（id、名字、meta.detail、双语键集合） | fast |
 | pack | `scripts/verify-package.mjs` | `exports`/`files` 指向真实文件、依赖精确锁定、`npm pack` 实际文件清单与版本一致 | slow |

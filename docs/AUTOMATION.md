@@ -33,6 +33,8 @@ Exit codes: `0` all green, `1` failure or timeout, `2` usage error.
 | rescue | `scripts/context-rescue.test.mjs` | context-overflow rescue: fold budget, tail shrinking, per-session de-duplication, bypass conditions, error event forwarded unchanged | fast |
 | pi-ai | `scripts/pi-ai-runtime.test.mjs` | pi-ai generation detection (0.87+/1.x vs older) and transcript fold/expand, idempotence, round trip | fast |
 | pi-ai-contract | `scripts/pi-ai-contract.test.mjs` | Replays both generations' real estimators against the adapter output: the legacy `reading 'length'` crash on a system message must be covered by the fix (mutation-verified) | fast |
+| thinking | `scripts/thinking-context.test.mjs` | Thinking-tier mapping (thinkingMode → thinkingLevelMap), shrink-only context budgets, and the two history-thinking switches | fast |
+| thinking-wire | `scripts/thinking-wire.test.mjs` | The request body real pi-ai emits: chosen tier → `thinking`/`reasoning_effort`, `off` → `thinking{disabled}`; skips without the peer | fast |
 | docs | `scripts/verify-docs.mjs` | relative links and `#anchors`, code-fence balance, English/Chinese heading parity, README and detail-doc budgets | fast |
 | manifest | `scripts/verify-manifest.mjs` | `package.json` / `cordis.patch.yml` / `locale/*.json` agreement (id, name, meta.detail, locale key sets) | fast |
 | pack | `scripts/verify-package.mjs` | `exports`/`files` point at real files, dependencies pinned, real `npm pack` file list matches the version | slow |
