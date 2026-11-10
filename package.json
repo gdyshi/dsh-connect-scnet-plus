@@ -2,7 +2,7 @@
   "name": "dsh-connect-scnet-plus",
   "displayName": "DSH Connect SCNet",
   "description": "把本机 scnet 客户端的模型网关接入 DSH：只读发现凭据，模型目录自动加载。增强版——插件详情页提供模型开关 tab、逐模型启用/停用、诊断与图片历史支持。",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "dsh-connect-scnet-plus contributors",
   "license": "MIT",
   "keywords": [
@@ -61,7 +61,7 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "3.19.0"
+    "@deepseek-ai/schemastery": "3.18.4"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.1-rc.1 <5.0.0 || >=4.0.2 <5.0.0",

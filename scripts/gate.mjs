@@ -84,6 +84,20 @@ export const GATES = [
     about: "用两代真实 estimator 复算适配输出：旧版 system 消息崩溃必须被修复覆盖"
   },
   {
+    name: "thinking",
+    lane: "fast",
+    script: "scripts/thinking-context.test.mjs",
+    timeoutMs: 30_000,
+    about: "思考档位映射、上下文预算、历史 thinking 开关（纯内存）"
+  },
+  {
+    name: "thinking-wire",
+    lane: "fast",
+    script: "scripts/thinking-wire.test.mjs",
+    timeoutMs: 60_000,
+    about: "真实 pi-ai 打出的请求体：tier→thinking/reasoning_effort（无 peer 时跳过）"
+  },
+  {
     name: "docs",
     lane: "fast",
     script: "scripts/verify-docs.mjs",

@@ -1,8 +1,60 @@
+# dsh-connect-scnet-plus 0.1.2 
+
+对照 `dsh-connect-workbuddy` 补齐三项核心能力，其中第一项是**功能性缺陷修复**。
+
+## 本版重点
+
+### 1. 思考档位从「假控件」变成真的
+
+之前每个请求都被钉在 `off`。pi-ai 把 `off` 翻译成**不发送 reasoning 字段**，而 SCNet
+的模型默认就在思考——所以选择任何档位发出的请求完全相同，控件看着能动、实际无效。
+
+实测确认网关接受两档指令：
+
+| 发送的参数 | 效果 |
+|---|---|
+| `reasoning_effort: minimal/low/medium/high/xhigh` | 推理量随档位变化 |
+| `thinking: {type: "disabled"}` | 完全不思考 |
+
+本版把 `models.json` 的 `thinkingMode: "levels"` 翻译成 `thinkingLevelMap` 并声明
+`thinkingFormat: "deepseek"`，pi-ai 据此打出正确参数。没有档位词汇的模型保持原来的
+`off` 形态——对它们来说「不发字段」本来就是唯一诚实的请求。
+
+新增两个门禁：`thinking`（22 项，映射/预算/开关）与 `thinking-wire`（7 项，用本地
+捕获服务器 + 真实 pi-ai 读取请求体，断言 `high` → `thinking{enabled}` +
+`reasoning_effort: high`、`off` → `thinking{disabled}`）。
+
+### 2. 逐模型上下文预算
+
+`contextBudgets`：模型 id → token 上限，生效值 `min(原生窗口, 预算)`，**只缩不放**。
+给 1M 窗口的模型设较小预算可显著降成本、减慢上下文膨胀。
+
+### 3. 历史 thinking 开关
+
+`dropForeignThinking`（默认开）与 `dropAllThinking`（默认关），把原先无条件的丢弃
+行为变成可配置，**默认行为不变**。`redacted` 块始终保留。
+
+### 结构
+
+描述符构造抽到 peer-free 的 `lib/model-descriptor.js`，与 `rescue-wrap.js` /
+`pi-ai-runtime.js` 同一模式——这些规则现在能在裸 checkout 和 CI 上被断言。
+
+## 升级
+
+```sh
+dsh plugin --profile desktop remove dsh-connect-scnet-plus
+dsh plugin --profile desktop add github:gdyshi/dsh-connect-scnet-plus
+```
+
+或在插件管理页点更新，装完重启一次 DSH。
+
+---
+
 # dsh-connect-scnet-plus 0.1.1 
 
 pi-ai 版本自适应版：装完不再需要手动对齐 `@earendil-works/pi-ai`。
 
-## 本版重点
+## 0.1.1 的重点
 
 `@earendil-works/pi-ai` 是**可选 peer**，安装时 pnpm 可能给 profile 装旧版
 （0.82/0.85），而宿主内置 1.x。两代消费的 context 形状不同，错配的症状是每个

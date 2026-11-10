@@ -174,6 +174,25 @@ assert.equal(upstreamAuth, "Bearer sk-real-key");
 assert.equal(chatBody.echo.model, "m1");
 ok("shim: POST forwarded with real key injected, body intact");
 
+// The thinking plumbing only works if the shim relays these fields verbatim:
+// pi-ai writes them, the shim forwards them, the gateway acts on them. A shim
+// that rebuilt the body from a known-fields list would silently drop the tier
+// and put us back to "the picker changes nothing".
+const thinkingRes = await fetch(`${base}/v1/chat/completions`, {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${secret}` },
+  body: JSON.stringify({
+    model: "m1",
+    messages: [{ role: "user", content: "hi" }],
+    thinking: { type: "disabled" },
+    reasoning_effort: "high"
+  })
+});
+const thinkingBody = await thinkingRes.json();
+assert.deepEqual(thinkingBody.echo.thinking, { type: "disabled" });
+assert.equal(thinkingBody.echo.reasoning_effort, "high");
+ok("shim: thinking / reasoning_effort reach upstream verbatim");
+
 // wrong content-type refused
 const wrongCt = await fetch(`${base}/v1/chat/completions`, {
   method: "POST",
