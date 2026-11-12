@@ -1,8 +1,46 @@
+# dsh-connect-scnet-plus 1.0.0 
+
+第一个稳定版本。0.1.x 期间的功能、配置项与故障模式都已定型，1.0.0 之后**不再有破坏性变更**；
+配置字段只增不删，默认行为保持不变。
+
+## 这个版本意味着什么
+
+0.1.2 已把最后一处功能性缺陷（思考档位控件无效）修掉。1.0.0 不带新功能，它的意义是**承诺**：
+
+- **配置稳定**：`apiKey` / `enabled` / `modelSwitches` / `enabledModelIds` / `contextBudgets` /
+  `dropForeignThinking` / `dropAllThinking` 字段与语义冻结。新增能力只会加新字段。
+- **行为稳定**：默认配置下的行为不再改变——未配置即全部模型可用、默认丢弃跨 provider 的
+  thinking、默认不碰本路由自己的 thinking。
+- **质量门槛**：12 个门禁、200+ 断言，CI 在 Windows/Linux × Node 22.19/24 四个组合上跑同一套。
+
+## 从 0.1.x 升级
+
+无迁移动作。配置字段、默认值、provider id（`scnet`）全部不变，装完重启一次 DSH 即可。
+
+```sh
+dsh plugin --profile desktop remove dsh-connect-scnet-plus
+dsh plugin --profile desktop add github:gdyshi/dsh-connect-scnet-plus
+```
+
+## 0.1.x 累积的能力
+
+- **零配置接入**：自动发现本机 scnet 客户端凭据并加载模型目录
+- **逐模型开关**：插件页勾选；不勾 = 全部可用，勾了 = 只显示勾选的
+- **逐模型上下文预算**：`min(原生窗口, 预算)`，只缩不放
+- **思考档位真正生效**：六档可选，「关闭」会真的让模型停止思考
+- **历史 thinking 开关**：跨 provider / 全局两个开关，默认行为不变
+- **pi-ai 世代自适应**：0.82/0.85 与 0.87+/1.x 都可用，无需手动对齐版本
+- **图片历史回放**：接入宿主 attachments 服务
+- **一键诊断**：`node lib/bin.js`
+- **重新登录不重启**：凭据每 5 分钟自动重扫
+
+---
+
 # dsh-connect-scnet-plus 0.1.2 
 
 对照 `dsh-connect-workbuddy` 补齐三项核心能力，其中第一项是**功能性缺陷修复**。
 
-## 本版重点
+## 0.1.2 的重点
 
 ### 1. 思考档位从「假控件」变成真的
 

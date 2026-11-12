@@ -2,7 +2,7 @@
   "name": "dsh-connect-scnet-plus",
   "displayName": "DSH Connect SCNet",
   "description": "把本机已登录的超算互联网（SCNet）模型接入 DeepSeek Harness：无需二次登录或填写 API Key，自动读取客户端里的 30+ 个模型，可逐模型开关、设定上下文预算与思考档位，并在插件页提供一键诊断。",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "author": "dsh-connect-scnet-plus contributors",
   "license": "MIT",
   "keywords": [
