@@ -2,9 +2,20 @@
 
 [![CI](https://github.com/gdyshi/dsh-connect-scnet-plus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gdyshi/dsh-connect-scnet-plus/actions/workflows/ci.yml)
 
-把本机「超算互联网 / SCNet（计算服务）」客户端已登录的模型接入 DeepSeek Harness。
+<p align="center"><b>把本机已登录的超算互联网（SCNet）模型接入 DeepSeek Harness —— 不用二次登录、不用粘贴 API Key，客户端里的 30+ 个模型直接出现在模型选择器里，并可逐模型开关、设定上下文预算与思考档位。</b></p>
 
-**这是增强版**：在插件详情页提供「模型 / 说明」tab 卡片，可逐模型勾选启用；支持带图历史；内置诊断。
+一个独立的 [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) bundle 插件。你已经在自己的机器上登录了「超算互联网 / SCNet（计算服务）」客户端，插件只是把那份**已有的登录态**接到 DSH 的模型选择器上，让你在写代码的地方直接用到它。
+
+它不提供账号、不共享凭据、不绕过计费。每一次调用都消耗**你自己账号**的额度，按上游真实计费；插件对客户端凭据**只读**，从不改写。
+
+## 能做什么
+
+- **零配置接入**：首次启动即自动发现本机凭据并加载模型目录，不需要另填 Key 或再登录一次。
+- **逐模型开关**：插件详情页的「模型」tab 里勾选想用的模型；不勾 = 不做限制（全部可用），勾了就只显示勾选的。
+- **逐模型上下文预算**：给 1M 窗口的模型设一个较小的上限，降低单次成本、拖慢上下文膨胀。只会缩小，填大了也不会凭空多出上下文。
+- **思考档位真正生效**：选择低/中/高会真的改变上游的推理量，「关闭」会真的让模型停止思考。
+- **一键诊断**：`node lib/bin.js` 输出凭据、目录来源、网关连通性、模型启用状态与 pi-ai 世代。
+- **重新登录不用重启**：凭据每 5 分钟自动重扫。
 
 ## 与基础版的区别
 
@@ -12,21 +23,21 @@
 |---|---|---|
 | 插件详情页设置卡片 | 无 | 「模型 / 说明」两个 tab |
 | 逐模型启用 / 停用 | 无 | 勾选框，默认全不勾 = 全部可用 |
+| 逐模型上下文预算 | 无 | 可设上限，只缩不放 |
+| 思考档位 | 无（恒定 off） | 六档可选，「关闭」真的关闭 |
 | 图片历史回放 | 不支持 | 支持（接入宿主 attachments 服务） |
 | 凭据 TTL 重扫 | 无 | 5 分钟自动重扫，重新登录无需重启 |
-| doctor 诊断 | 无 | `node lib/bin.js` |
+| 诊断 | 无 | `node lib/bin.js` |
 | 凭据只读 | 是 | 是 |
 
 ## 安装要求
 
 - DSH 0.2.x（`@deepseek-ai/dsh-llm` / `dsh-llm-pi-ai` peer 范围内）
 - 本机已安装并登录过 scnet 客户端（凭据在 `~/.sclaw/agent/scnet-credentials/`）
-- **重要**：本机 profile 解析到的 `@earendil-works/pi-ai` 必须与宿内置版本同代（≥0.87，推荐 1.x）。版本错配会导致每个请求在本地崩溃（见 [故障排查](#故障排查)）。
+- pi-ai 版本**无需手动对齐**，插件会自适应（原理见 [pi-ai 版本](#pi-ai-版本自动适配不需要手动对齐)）
 
 ```sh
-dsh plugin --profile desktop add github:<你的用户名>/dsh-connect-scnet-plus
-# 或者装 tarball
-dsh plugin --profile desktop add file:/绝对路径/dsh-connect-scnet-plus-0.1.0.tgz
+dsh plugin --profile desktop add github:gdyshi/dsh-connect-scnet-plus
 ```
 
 安装后**重启一次 DSH**。

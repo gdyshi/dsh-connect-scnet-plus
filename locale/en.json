@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "SCNet (Supercomputing Internet) Plus",
-    "description": "Connects the local SCNet client's model gateway to DSH: read-only credentials, automatic model catalog. Enhanced edition with a model-switches tab on the plugin page.",
+    "description": "Brings the models already signed in to the local SCNet (超算互联网) client into DSH — no second login, no API key to paste. Reads the client's 30+ models automatically, with per-model on/off, per-model context budgets and thinking tiers, plus one-click diagnostics on the plugin page.",
     "detail": "docs/detail.md"
   }
 }
