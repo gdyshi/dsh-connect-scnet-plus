@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "超算互联网（计算服务）Plus",
-    "description": "把本机 scnet 客户端的模型网关接入 DSH：只读发现凭据，模型目录自动加载。增强版——插件详情页提供模型开关 tab。",
+    "description": "把本机已登录的超算互联网（SCNet）模型接入 DSH：无需二次登录或填写 API Key，自动读取客户端里的 30+ 个模型，逐模型开关、逐模型设定上下文预算与思考档位，并在插件页提供一键诊断。",
     "detail": "docs/detail.zh.md"
   }
 }
