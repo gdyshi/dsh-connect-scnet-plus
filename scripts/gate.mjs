@@ -56,6 +56,13 @@ export const GATES = [
     about: "凭据发现 / 模型目录 / 选择语义 / loopback shim（26 项）"
   },
   {
+    name: "auth",
+    lane: "fast",
+    script: "scripts/auth-health.test.mjs",
+    timeoutMs: 60_000,
+    about: "授权健康：失败分层（401/证书/超时/不可达）、每日复核、401 后重扫凭据"
+  },
+  {
     name: "replay",
     lane: "fast",
     script: "scripts/replay-semantics.test.mjs",

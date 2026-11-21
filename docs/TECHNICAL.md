@@ -10,12 +10,13 @@ scnet 客户端把 OpenAI 兼容的 LLM 网关留在本机工具链里:
 - 鉴权:`Authorization: Bearer sk-…`,key 缓存在 `~/.sclaw/agent/scnet-credentials/<hash>.json`
 - 模型目录(含 contextWindow / maxTokens / 输入模态 / 价格标签)缓存在 `~/.sclaw/agent/models.json` 的 `providers.scnet.models` + `visibleModelIds`
 
-插件做四件事:
+插件做五件事:
 
 1. **凭据发现(只读)**:优先级为 插件设置里的 `apiKey` → 环境变量 `SCNET_API_KEY` → 扫描 `~/.sclaw/agent/scnet-credentials/*.json` 中所有 `type: "api_key"` 的 key。结果按 5 分钟 TTL 重扫。
 2. **模型目录**:优先读本机 `models.json`(按 `visibleModelIds` 过滤),失败则请求网关 `GET /models`;内存缓存 10 分钟。免费模型在显示名上标注「· 免费」。
-3. **安全 loopback shim**:provider 所有模型的 `baseUrl` 指向本机 `127.0.0.1:<随机端口>`,由每次进程启动时随机生成的 secret 保护(Host/Origin 回环校验 + 常数时间 Bearer 比对)。shim 收到请求后把 `Authorization` 替换为真实 sk-key 转发到网关,上游响应(含 SSE)原样透传。
+3. **安全 loopback shim**:provider 所有模型的 `baseUrl` 指向本机 `127.0.0.1:<随机端口>`,由每次进程启动时随机生成的 secret 保护(Host/Origin 回环校验 + 常数时间 Bearer 比对)。shim 收到请求后把 `Authorization` 替换为真实 sk-key 转发到网关,上游响应(含 SSE)原样透传。转发失败按**层**分类返回 `scnet_gateway_error`(超时 504、TLS/不可达 502),不再把 Node 的裸网络错误一律当 500 抛出。
 4. **provider 注册**:通过宿主 `llm` 服务 `registerAdapter` / `registerConfigurableProviders` 注册名为 `scnet` 的 provider。
+5. **授权健康(每天一次)**:`lib/auth-health.js` 每天用当前 key 请求一次 `GET /models`,记录 `authorization` 判定。判定以**失败层**为准:只有 401/403 算「授权失效」,证书/超时/网络故障一律标注「这不是授权问题」——这正是「网络提示错误 → 以为是授权到期」的根因。收到 401 时立刻触发一次凭据重扫(旁路 5 分钟 TTL),重新登录写入的新 key 当次生效;重扫后 key 未变则维持 `unauthorized` 并提示重新登录。判定结果同时出现在 `/status`(插件详情页)与 `node lib/bin.js` 的 `authorization` 段。
 
 ## 模型开关
 
@@ -48,12 +49,13 @@ scnet 客户端把 OpenAI 兼容的 LLM 网关留在本机工具链里:
 
 ## 自动化与可测性边界
 
-本地与 CI 使用同一个门禁入口：`npm run gate` → `scripts/gate.mjs`（8 条门禁、fast/slow 车道）。设计、门禁清单与排障见 [AUTOMATION.zh.md](AUTOMATION.zh.md)。
+本地与 CI 使用同一个门禁入口：`npm run gate` → `scripts/gate.mjs`（fast/slow 车道；清单以 `GATES` 与 [AUTOMATION.zh.md](AUTOMATION.zh.md) 为唯一事实来源）。设计、门禁清单与排障见 [AUTOMATION.zh.md](AUTOMATION.zh.md)。
 
 为了让「门禁」真正可执行，纯逻辑与宿主边界做了拆分：
 
 - `lib/replay-semantics.js`：跨 provider 历史重放的完整规则（身份修复、加固、外来 thinking 丢弃）。不 import 任何宿主包，`scripts/replay-semantics.test.mjs` 直接断言这份**真实实现**，而不是测试文件里的逻辑副本。
 - `lib/rescue-wrap.js`：上下文溢出救援的 stream 包装器，pi-ai 的两个原语由 `lib/adapter.js` 注入；`scripts/context-rescue.test.mjs` 用假事件流断言「救援在错误事件转发前发生、错误原样转发、缺 sessionId/window 时旁路」。运行时路径不变。
+- `lib/auth-health.js`：授权判定与每日节奏的纯逻辑（失败分层、401 后重扫、日志只报状态跃迁），探针、时钟、定时器全部注入；`scripts/auth-health.test.mjs` 用假时钟 + 本机 loopback mock 断言这份真实实现，不联网、不读 `~/.sclaw`。
 - `scripts/check-syntax.mjs` 用 `node --check` 只解析、不执行模块：`import()` 整模块会触发顶层副作用（起 shim、读凭据），不是语法检查。
 - 测试自足：不联网、不读写 `~/.sclaw`；shim 测试只连自己起的 loopback mock，凭据/目录用临时目录与构造数据。
 - `scripts/live-check.mjs` 是手动联调脚本（需要真实凭据与网络），刻意不进 CI，也不进任何门禁。

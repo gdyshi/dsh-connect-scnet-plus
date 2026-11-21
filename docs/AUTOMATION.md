@@ -29,6 +29,7 @@ Exit codes: `0` all green, `1` failure or timeout, `2` usage error.
 |---|---|---|---|
 | syntax | `scripts/check-syntax.mjs` | every `lib/*.js` and `scripts/*.mjs` with `node --check` (parse only, never executes), plus static validation that relative imports point at real files | fast |
 | unit | `scripts/selftest.mjs` | credential discovery, catalog and selection semantics, loopback shim behaviour (26 assertions) | fast |
+| auth | `scripts/auth-health.test.mjs` | authorization health: failure layering (401/403 vs TLS vs timeout vs unreachable vs 5xx), the once-a-day check, one credential re-scan after a 401 | fast |
 | replay | `scripts/replay-semantics.test.mjs` | cross-provider history replay: own `dsh-foreign` identity repair, foreign thinking dropped, same-route kept, deformed shapes hardened | fast |
 | rescue | `scripts/context-rescue.test.mjs` | context-overflow rescue: fold budget, tail shrinking, per-session de-duplication, bypass conditions, error event forwarded unchanged | fast |
 | pi-ai | `scripts/pi-ai-runtime.test.mjs` | pi-ai generation detection (0.87+/1.x vs older) and transcript fold/expand, idempotence, round trip | fast |
