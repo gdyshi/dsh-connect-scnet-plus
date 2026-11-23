@@ -14,7 +14,9 @@
 - **逐模型开关**：插件详情页的「模型」tab 里勾选想用的模型；不勾 = 不做限制（全部可用），勾了就只显示勾选的。
 - **逐模型上下文预算**：给 1M 窗口的模型设一个较小的上限，降低单次成本、拖慢上下文膨胀。只会缩小，填大了也不会凭空多出上下文。
 - **思考档位真正生效**：选择低/中/高会真的改变上游的推理量，「关闭」会真的让模型停止思考。
-- **一键诊断**：`node lib/bin.js` 输出凭据、目录来源、网关连通性、模型启用状态与 pi-ai 世代。
+- **一键诊断**：`node lib/bin.js` 输出凭据、目录来源、网关连通性、授权状态、模型启用状态与 pi-ai 世代。
+- **授权每天自检**：每天用当前 key 探测一次网关（`GET /models`），把「授权还有效吗」写进诊断与详情页；网关返回 401 时立即重扫凭据，重新登录后不用重启 DSH。
+- **报错说人话**：转发失败会区分「授权失效 / 证书问题 / 超时 / 网络不可达 / 上游故障」，并给出对应动作，不再一律显示成「网络错误」。
 - **重新登录不用重启**：凭据每 5 分钟自动重扫。
 
 ## 与基础版的区别
@@ -27,6 +29,7 @@
 | 思考档位 | 无（恒定 off） | 六档可选，「关闭」真的关闭 |
 | 图片历史回放 | 不支持 | 支持（接入宿主 attachments 服务） |
 | 凭据 TTL 重扫 | 无 | 5 分钟自动重扫，重新登录无需重启 |
+| 授权状态自检 | 无 | 每天一次；401 立即重扫凭据 |
 | 诊断 | 无 | `node lib/bin.js` |
 | 凭据只读 | 是 | 是 |
 
@@ -53,7 +56,7 @@ dsh plugin --profile desktop add github:gdyshi/dsh-connect-scnet-plus
 一条命令跑完本地全部门禁，与 CI 完全同源：
 
 ```sh
-npm run gate                  # 全量 8 项：syntax / unit / replay / rescue / docs / manifest / pack / automation
+npm run gate                  # 全量门禁（清单见下方 docs 或 --list）
 npm run gate -- --lane fast   # 提交前快速档
 npm run gate -- --list        # 查看门禁注册表
 ```
@@ -115,6 +118,13 @@ pi-ai 会把 system prompt 折成 system 消息，而插件解析到的旧版 pi
 
 **模型选择器里一个 scnet 模型都没有**：检查 `cordis.patch.yml` 是否残留
 `modelSwitches` 段；清空即可恢复全部模型。
+
+**报错 `scnet_gateway_error`**：看响应里的 `verdict` 字段，它说明是哪一层出的问题：
+
+- `unauthorized`（HTTP 401）：凭据被网关拒绝。在 scnet 客户端重新登录一次，插件会自动重扫；仍然失败就 `node lib/bin.js` 看 `authorization` 段。
+- `tls` / `timeout` / `unreachable`（HTTP 502/504）：**不是授权问题**。分别是证书校验失败（多为本机代理或系统时间）、连接超时、完全连不上网关；换网络或修正代理后重试。
+- `upstream-error` / `rate-limited`：SCNet 网关自身故障或限流，稍后重试即可。
+- `missing-credential`：本机没有发现 key，先确认 scnet 客户端已登录。
 
 ## 风险提示 / 免责声明
 

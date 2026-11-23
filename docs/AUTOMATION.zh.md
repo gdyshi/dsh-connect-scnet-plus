@@ -26,6 +26,7 @@ npm run gate -- --bail              # 首个失败即停（CI 省时间；本地
 |---|---|---|---|
 | syntax | `scripts/check-syntax.mjs` | `lib/*.js`、`scripts/*.mjs` 逐个 `node --check`（只解析、不执行），并静态校验相对 import 指向真实文件 | fast |
 | unit | `scripts/selftest.mjs` | 凭据发现、模型目录与选择语义、loopback shim 的 26 项行为断言 | fast |
+| auth | `scripts/auth-health.test.mjs` | 授权健康：失败分层（401/403 vs TLS vs 超时 vs 不可达 vs 5xx）、每日一次的复核、401 后只重扫一次凭据 | fast |
 | replay | `scripts/replay-semantics.test.mjs` | 跨 provider 历史重放：自身 `dsh-foreign` 身份修复、外来 thinking 丢弃、同路由保留、畸形结构加固 | fast |
 | rescue | `scripts/context-rescue.test.mjs` | 上下文溢出救援：折叠预算、尾部收缩、单 session 去重、旁路条件、错误事件原样转发 | fast |
 | pi-ai | `scripts/pi-ai-runtime.test.mjs` | pi-ai 世代判定（0.87+/1.x vs 旧版）与 transcript 折叠/展开、幂等、往返 | fast |
