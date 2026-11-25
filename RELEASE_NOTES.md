@@ -1,3 +1,59 @@
+# dsh-connect-scnet-plus 1.1.0 
+
+授权每天自检 + 网关报错「说人话」。起因是一条现场反馈：「SCNet 网络提示错误，应该是授权到期了」。
+其实 key 没问题——网关 189ms 就接受了它；日志里先是 `ETIMEDOUT`、后是 `certificate has expired`，
+但宿主只看到一句笼统的 `500 scnet_shim_error` 加一串 Node 裸错误。**网络故障被误读成授权故障**，
+这个版本把两个独立的缺口都补上。
+
+## 1.1.0 的重点
+
+### 1. 转发失败按「层」分类，不再一律「网络错误」
+
+shim 转发失败现在返回 `scnet_gateway_error`，带 `verdict` 和一对 detail/hint，告诉你该做什么：
+
+| verdict | HTTP | 含义与动作 |
+|---|---|---|
+| `unauthorized` | 401 | 凭据被网关拒绝：在 scnet 客户端重新登录，插件自动重扫，无需重启 |
+| `tls` | 502 | 证书校验失败（多为本机代理/中间设备或系统时间不对）——**这不是授权问题** |
+| `timeout` | 504 | 连接超时（含 DNS）——**这不是授权问题**，换网络/代理后重试 |
+| `unreachable` | 502 | 完全连不上网关——**这不是授权问题**，检查网络/代理/VPN |
+| `upstream-error` / `rate-limited` | 透传 | 网关自身故障或限流，稍后重试 |
+| `missing-credential` | — | 本机没发现 key，先确认 scnet 客户端已登录 |
+
+分类会挖到 `cause` 链和 fetch 的 `AggregateError` 里取真实 errno，所以被包成
+`TypeError: fetch failed` 的错误也能正确归层。上游响应（包括网关自己的 401 body）仍**原样透传**。
+
+### 2. 授权每天自检，401 立即重扫凭据
+
+新增 `lib/auth-health.js`（纯逻辑，探针/时钟/定时器全部注入）：每天用「真实请求会用的那把 key」
+探测一次 `GET /models`，记录授权判定，日志只报状态跃迁。收到 401/403 时**立刻强制重扫一次凭据**
+（旁路 5 分钟 TTL）：客户端写了新 key 就当次生效；key 没变则维持 `unauthorized` 并提示「重新登录」。
+shim 看到 401 也触发同一检查（30 秒防抖），不用等一天。
+
+判定出现在用户会看的两个地方：插件详情页（`/status` 新增 `authorization` 段）与
+`node lib/bin.js` 的 `authorization` 检查。`fetchGatewayCatalog` 现在把 HTTP 状态留在错误上，
+401 才有可能被分类。
+
+### 质量
+
+新增 gate `auth`（fast 车道）：失败分层（含 fetch 包装错误）、`/models` 的 401 状态、
+shim 的 502/504 body 与透传、假时钟下的每日节奏、401 后的单次重扫、doctor 输出。
+并对照真实网关验证：假 key 判为 `unauthorized`（401），死端口答 502「这不是授权问题」。
+
+## 从 1.0.x 升级
+
+无迁移动作。配置字段、默认值、provider id（`scnet`）全部不变，新增能力不新增配置项。
+装完重启一次 DSH 即可。
+
+```sh
+dsh plugin --profile desktop remove dsh-connect-scnet-plus
+dsh plugin --profile desktop add github:gdyshi/dsh-connect-scnet-plus
+```
+
+或在插件管理页点更新。
+
+---
+
 # dsh-connect-scnet-plus 1.0.0 
 
 第一个稳定版本。0.1.x 期间的功能、配置项与故障模式都已定型，1.0.0 之后**不再有破坏性变更**；
